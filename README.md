@@ -119,5 +119,3 @@ I don't plan to create a mobile app, but I encourage you to take advantage of an
 A very interesting project called SmartScaleConnect synchronizes scale data (applies to Mi Body Composition Scale 2 / S400) from Xiaomi cloud to Garmin:
 - Linux | MacOS | Windows: https://github.com/AlexxIT/SmartScaleConnect.
 
-## If you like my work, you can buy me a coffee
-<a href="https://www.buymeacoffee.com/RobertWojtowicz" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/default-orange.png" alt="Buy Me A Coffee" height="41" width="174"></a>
