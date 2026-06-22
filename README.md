@@ -3,103 +3,125 @@
 Export health data from supported devices to Garmin Connect.
 
 This project was originally created by [Robert Wójtowicz](https://github.com/RobertWojtowicz/export2garmin).
-The current version also includes verified support for the Omron HEM-7196T1 / X4 Connect AFib blood pressure monitor on macOS.
+
+This fork adds and verifies an end-to-end macOS workflow for the **Omron HEM-7196T1 / X4 Connect AFib** blood pressure monitor.
 
 ## 1. Introduction
 
-### 1.1. Miscale module (once known as miscale2garmin)
+### 1.1 Miscale module
 
-* Allows fully automatic synchronization of Mi Body Composition Scale 2 (tested on XMTZC05HM) or Xiaomi Body Composition Scale S400 (tested on MJTZC01YM) directly to Garmin Connect, with the following parameters:
+The Miscale module supports automatic synchronization of compatible Xiaomi/Mi body composition scales to Garmin Connect.
 
-  * Date and Time (measurement, from device);
-  * Weight (***NOTE:***** lbs is automatically converted to kg**, applies to Mi Body Composition Scale 2);
-  * BMI (Body Mass Index);
-  * Body Fat;
-  * Skeletal Muscle Mass;
-  * Bone Mass;
-  * Body Water;
-  * Physique Rating;
-  * Visceral Fat;
-  * Metabolic Age;
-  * Heart rate (Xiaomi Body Composition Scale S400 only, optional upload to blood pressure section).
+Supported/tested devices include:
 
-* `miscale_backup.csv` also contains other parameters which can be imported into Excel or other analysis tools:
+* Mi Body Composition Scale 2 (`XMTZC05HM`);
+* Xiaomi Body Composition Scale S400 (`MJTZC01YM`).
 
-  * BMR (Basal Metabolic Rate);
-  * LBM (Lean Body Mass);
-  * Ideal Weight;
-  * Fat Mass To Ideal;
-  * Protein;
-  * Data Status (`to_import`, `failed`, `uploaded`);
-  * Unix Time (based on Date and Time);
-  * Email User (used Garmin Connect account);
-  * Upload Date and Upload Time;
-  * Difference Time (between measuring and uploading);
-  * Battery status in V and % (ESP32 - Mi Body Composition Scale 2 only);
-  * Impedance;
-  * Impedance Low (Xiaomi Body Composition Scale S400 only).
+The module can export:
 
-* Supports multiple users with individual weight ranges and Garmin Connect accounts.
+* Date and time;
+* Weight;
+* BMI;
+* Body fat;
+* Skeletal muscle mass;
+* Bone mass;
+* Body water;
+* Physique rating;
+* Visceral fat;
+* Metabolic age;
+* Heart rate for Xiaomi Body Composition Scale S400.
 
-### 1.2. Omron module
+`miscale_backup.csv` may also contain additional values useful for analysis in Excel or other tools:
 
-The Omron module supports direct export of compatible Omron blood pressure monitors to Garmin Connect.
+* BMR;
+* Lean body mass;
+* Ideal weight;
+* Fat mass to ideal;
+* Protein;
+* Data status;
+* Unix time;
+* Garmin account;
+* Upload date and time;
+* Difference between measurement time and upload time;
+* Battery level;
+* Impedance.
 
-Tested devices include:
+### 1.2 Omron module
+
+The Omron module exports stored blood pressure measurements from compatible Omron devices and uploads them to Garmin Connect.
+
+Previously tested devices include:
 
 * Omron M4 / HEM-7155T;
-* Omron M7 / HEM-7322T Intelli IT;
-* Omron HEM-7196T / X4 Connect AFib.
+* Omron M7 / HEM-7322T Intelli IT.
 
-The module exports:
+This fork also adds verified support for:
 
-* Date and Time (measurement time from device);
-* DIAstolic blood pressure;
-* SYStolic blood pressure;
-* Heart rate.
+* **Omron HEM-7196T1**;
+* **Omron X4 Connect AFib**.
 
-`omron_backup.csv` also stores additional data which can be imported into Excel or other analysis tools:
+The Omron export contains:
 
-* Category (***NOTE:***** EU and US classification only**);
-* MOV (Movement detection);
-* IHB (Irregular Heart Beat);
-* Data Status (`to_import`, `failed`, `imported`);
-* Unix Time;
-* Email User;
-* Upload Date and Upload Time;
-* Difference Time between measurement and Garmin upload.
+* Measurement date and time;
+* Systolic blood pressure;
+* Diastolic blood pressure;
+* Heart rate;
+* Movement detection flag;
+* Irregular heartbeat flag;
+* User profile.
 
-The Omron module supports two user profiles on compatible devices and can upload each profile to a separate Garmin Connect account.
+The local Omron import history is stored in:
 
-### 1.3. Omron HEM-7196T1 / X4 Connect AFib support
+```text
+user/omron_backup.csv
+```
 
-The HEM-7196T1 / X4 Connect AFib uses Omron's modern Bluetooth Low Energy service (`FE4A`).
+### 1.3 HEM-7196T1 / X4 Connect AFib support
 
- tmp/omron_user1.csv tmp/omron_user2.csv   
+The HEM-7196T1 uses Omron’s modern Bluetooth Low Energy service:
 
-The HEM-7196T1 workflow has been tested end-to-end with real data:
+```text
+FE4A
+```
+
+The device differs from some older Omron models because both User 1 and User 2 measurements are stored in a shared measurement bank.
+
+The verified record layout for this device includes:
+
+```text
+Record start address: 0x01C4
+Record size:          16 bytes
+User identifier:      embedded in each record
+```
+
+The driver reads the shared record bank and separates records into:
+
+```text
+tmp/omron_user1.csv
+tmp/omron_user2.csv
+```
+
+The HEM-7196T1 workflow has been tested with real device data and verified all the way through Garmin Connect:
 
 ```text
 Omron HEM-7196T1 / X4 Connect AFib
                 ↓
 Bluetooth Low Energy export
                 ↓
-User 1 and User 2 CSV separation
+CSV separation for User 1 and User 2
                 ↓
-Local Omron import history and duplicate protection
+Local import history and duplicate protection
                 ↓
 Garmin Connect blood pressure upload
 ```
 
-### 1.4. Garmin duplicate protection
+### 1.4 Garmin duplicate protection
 
-The Garmin import uses the local file:
+Garmin Connect accepts multiple blood pressure readings on the same day.
 
-```text
-user/omron_backup.csv
-```
+This fork therefore defaults to uploading all Omron readings unless filtering is explicitly enabled.
 
-Each record has one of the following statuses:
+Each row in `user/omron_backup.csv` has a status:
 
 ```text
 to_import  = waiting to be uploaded to Garmin Connect
@@ -107,19 +129,32 @@ imported   = successfully uploaded to Garmin Connect
 failed     = upload failed and can be retried
 ```
 
-After a successful Garmin upload, the record is marked as `imported`.
+After a successful Garmin upload, the script changes the row status to:
 
-This prevents the same Omron measurement from being uploaded again when the import is run multiple times.
+```text
+imported
+```
 
-### 1.5. Optional daily Omron upload filtering
+This prevents duplicate Garmin uploads when the import command is run again.
 
-By default, all Omron measurements are uploaded to Garmin:
+Duplicate protection has two layers:
+
+```text
+1. New Omron rows are compared against existing Unix timestamps in omron_backup.csv.
+2. Already uploaded rows are marked imported and skipped on later Garmin imports.
+```
+
+### 1.5 Optional daily Omron upload filtering
+
+Default behaviour is:
 
 ```text
 omron_daily_filter=all
 ```
 
-Optional values:
+This preserves all raw Omron measurements in Garmin Connect.
+
+Available values are:
 
 ```text
 all             = upload all readings
@@ -129,118 +164,136 @@ first_truread   = upload the average of the first 3-reading session within 15 mi
 latest_truread  = upload the average of the latest 3-reading session within 15 minutes
 ```
 
-The TruRead-related filters infer a session from three consecutive measurements within 15 minutes.
+The TruRead-related filters infer a TruRead-like session from three consecutive measurements within 15 minutes.
 
-If no three-reading session is found, the script falls back to the average of all raw readings for that day.
+When no three-measurement session is found, the script falls back to the average of all raw readings from that day.
 
-### 1.6. User module
+### 1.6 User module
 
-* Enables configuration of all parameters related to Miscale and Omron integrations;
-* Provides export of OAuth1 and OAuth2 tokens from Garmin Connect;
-* Supports Garmin Connect MFA / 2FA.
+The User module manages local integration settings and Garmin authentication.
+
+It supports:
+
+* Miscale configuration;
+* Omron configuration;
+* Garmin Connect OAuth token storage;
+* Garmin Connect MFA / 2FA.
 
 ---
 
-## 2. How does this work
+## 2. How the project works
 
-* Miscale and Omron modules can be activated individually or run together:
+The supported device modules can be run individually or together.
 
-  * Devices can run together (Mi Body Composition Scale 2 and Omron);
-  * Devices can run together but there must be a sequence, first measuring blood pressure and then weighing (Xiaomi Body Composition Scale S400 and Omron);
-    This is because Xiaomi Body Composition Scale S400 requires continuous scanning. Importing data from the scale allows the workflow to proceed to the Omron module.
-  * Devices can run together in parallel, but two USB Bluetooth adapters are required: one for Xiaomi Body Composition Scale S400 and one for Omron.
-    This uses separate processes. See section [2.6.4.](https://github.com/RobertWojtowicz/export2garmin/blob/master/manuals/about_BLE.md#264-using-two-ble-adapters-in-parallel).
+```text
+Supported examples:
+- Omron blood pressure monitor only;
+- Xiaomi/Mi scale only;
+- Omron plus a supported scale;
+- Multiple Garmin accounts for multiple user profiles.
+```
 
-* Synchronization diagram from Export 2 to Garmin Connect:
+General workflow:
 
-### 2.1. Miscale module | Mi Body Composition Scale 2 | BLE VERSION
+```text
+Device measurement
+        ↓
+Bluetooth Low Energy readout
+        ↓
+CSV export
+        ↓
+Local history and duplicate protection
+        ↓
+Garmin Connect upload
+```
 
-* After weighing, Mi Body Composition Scale 2 is active for 15 minutes on Bluetooth transmission;
-* A USB Bluetooth adapter or internal module scans BLE devices for 10 seconds to acquire data from the scale;
-* Body weight and impedance data are processed by scripts;
-* Processed data are sent to Garmin Connect;
-* Raw and calculated data from the scale are backed up in `miscale_backup.csv`;
-* This part of the project is **no longer being developed**, but it still works.
+Original project workflow diagram:
 
-**Select your platform and go to instructions:**
+![Export 2 to Garmin Connect workflow](https://github.com/RobertWojtowicz/export2garmin/blob/master/manuals/workflow.png)
 
-* [Debian 13 | Raspberry Pi OS (based on Debian 13)](https://github.com/RobertWojtowicz/export2garmin/blob/master/manuals/Miscale_BLE.md);
-* [Windows 11](https://github.com/RobertWojtowicz/export2garmin/blob/master/manuals/all_BLE_win.md).
+### 2.1 Miscale module | Mi Body Composition Scale 2 | BLE
 
-### 2.2. Miscale module | Mi Body Composition Scale 2 | ESP32 VERSION
+* The scale becomes available over Bluetooth after weighing;
+* A Bluetooth adapter scans for the scale;
+* Weight and impedance are processed;
+* Processed values are uploaded to Garmin Connect;
+* Raw and calculated data are retained in `miscale_backup.csv`.
 
-* After weighing, Mi Body Composition Scale 2 is active for 15 minutes on Bluetooth transmission;
-* ESP32 operates in deep sleep and wakes every 7 minutes to scan BLE devices for 10 seconds;
-* The process can be started immediately through the reset button;
-* ESP32 sends acquired data through MQTT to an MQTT broker installed on the server;
-* Body weight and impedance data are processed by scripts;
-* Processed data are sent to Garmin Connect;
-* Raw and calculated data from the scale are backed up in `miscale_backup.csv`;
-* This part of the project is **no longer being developed**, but it still works.
+Instructions:
 
-**Select your platform and go to instructions:**
+* [Debian 13 / Raspberry Pi OS](https://github.com/RobertWojtowicz/export2garmin/blob/master/manuals/Miscale_BLE.md)
+* [Windows 11](https://github.com/RobertWojtowicz/export2garmin/blob/master/manuals/all_BLE_win.md)
 
-* [Debian 13 | Raspberry Pi OS (based on Debian 13)](https://github.com/RobertWojtowicz/export2garmin/blob/master/manuals/Miscale_ESP32.md);
-* [Windows 11](https://github.com/RobertWojtowicz/export2garmin/blob/master/manuals/Miscale_ESP32_win.md).
+### 2.2 Miscale module | Mi Body Composition Scale 2 | ESP32
 
-### 2.3. Miscale module | Xiaomi Body Composition Scale S400 | BLE VERSION
+* ESP32 wakes periodically and scans for the scale;
+* Data can be sent through MQTT;
+* Data are processed and uploaded to Garmin Connect;
+* Raw values are retained in `miscale_backup.csv`.
 
-* After weighing, Xiaomi Body Composition Scale S400 transmits weight data for a short period using Bluetooth;
-* A USB Bluetooth adapter scans BLE devices continuously to acquire scale data;
-* Data from the scale are decrypted and parsed into a readable format;
-* Body weight and impedance data are processed by scripts;
-* Processed data are sent to Garmin Connect;
-* Raw and calculated data from the scale are backed up in `miscale_backup.csv`.
+Instructions:
 
-**Select your platform and go to instructions:**
+* [Debian 13 / Raspberry Pi OS](https://github.com/RobertWojtowicz/export2garmin/blob/master/manuals/Miscale_ESP32.md)
+* [Windows 11](https://github.com/RobertWojtowicz/export2garmin/blob/master/manuals/Miscale_ESP32_win.md)
 
-* [Debian 13 | Raspberry Pi OS (based on Debian 13)](https://github.com/RobertWojtowicz/export2garmin/blob/master/manuals/S400_BLE.md);
-* [Windows 11](https://github.com/RobertWojtowicz/export2garmin/blob/master/manuals/all_BLE_win.md).
+### 2.3 Miscale module | Xiaomi Body Composition Scale S400 | BLE
 
-### 2.4. Omron module | BLE VERSION
+* The scale transmits briefly after a measurement;
+* Bluetooth data are scanned, decrypted and parsed;
+* Values are uploaded to Garmin Connect;
+* Raw and calculated data are retained in `miscale_backup.csv`.
 
-* After measuring blood pressure, compatible Omron devices allow stored measurement data to be downloaded;
-* A USB Bluetooth adapter or internal Bluetooth module scans BLE devices and retrieves data from the blood pressure monitor;
-* Downloading a complete history can take approximately one minute;
-* Blood pressure measurements are processed by scripts;
-* Processed data are sent to Garmin Connect;
-* Raw and calculated device data are backed up in `omron_backup.csv`.
+Instructions:
 
-**Existing Linux and Windows instructions:**
+* [Debian 13 / Raspberry Pi OS](https://github.com/RobertWojtowicz/export2garmin/blob/master/manuals/S400_BLE.md)
+* [Windows 11](https://github.com/RobertWojtowicz/export2garmin/blob/master/manuals/all_BLE_win.md)
 
-* [Debian 13 | Raspberry Pi OS (based on Debian 13)](https://github.com/RobertWojtowicz/export2garmin/blob/master/manuals/Omron_BLE.md);
-* [Windows 11](https://github.com/RobertWojtowicz/export2garmin/blob/master/manuals/all_BLE_win.md).
+### 2.4 Omron module | BLE
 
-### 2.5. Omron HEM-7196T1 / X4 Connect AFib on macOS
+* Omron measurements are stored in the monitor;
+* The monitor is contacted through Bluetooth Low Energy;
+* Measurement data are read and written to CSV;
+* New measurements are added to `user/omron_backup.csv`;
+* Pending records are uploaded to Garmin Connect;
+* Successful uploads are marked as `imported`.
 
-The HEM-7196T1 workflow has been verified on macOS using direct Python commands.
+Existing Linux and Windows instructions:
 
-The existing `import_data.sh` is primarily Linux-oriented and may depend on:
+* [Debian 13 / Raspberry Pi OS](https://github.com/RobertWojtowicz/export2garmin/blob/master/manuals/Omron_BLE.md)
+* [Windows 11](https://github.com/RobertWojtowicz/export2garmin/blob/master/manuals/all_BLE_win.md)
+
+---
+
+## 3. macOS support for Omron HEM-7196T1 / X4 Connect AFib
+
+The HEM-7196T1 implementation in this fork is verified on macOS with direct Python commands.
+
+The existing `import_data.sh` is primarily Linux-oriented and may depend on components such as:
 
 ```text
 bluepy
 bluetoothctl
-GNU/Linux sed behavior
+GNU/Linux sed behaviour
 Linux shell utilities
 ```
 
-For macOS, use the installation and workflow below.
+For macOS, use the workflow documented below.
 
 ---
 
-## 3. Installation on macOS for HEM-7196T1 / X4 Connect AFib
+## 4. Installation on a new Mac
 
-### 3.1. Install Python
+### 4.1 Install Python
 
 Install Python 3.10 or newer.
 
-Check that Python is available:
+Check the installed version:
 
 ```bash
 python3 --version
 ```
 
-### 3.2. Clone the repository
+### 4.2 Clone this fork
 
 ```bash
 mkdir -p ~/omron
@@ -250,48 +303,50 @@ git clone https://github.com/UlfAndreasson/export2garmin.git
 cd export2garmin
 ```
 
-### 3.3. Create and activate a virtual environment
+### 4.3 Create a Python virtual environment
 
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
 ```
 
-The shell prompt should now include:
+The terminal prompt should now contain:
 
 ```text
 (.venv)
 ```
 
-### 3.4. Install Python dependencies
+### 4.4 Install dependencies
 
 ```bash
 python -m pip install --upgrade pip
 python -m pip install bleak terminaltables garminconnect
 ```
 
-Verify installation:
+Verify the key dependencies:
 
 ```bash
 python -c "from garminconnect import Garmin; print('garminconnect OK')"
 python -c "import bleak, terminaltables; print('BLE dependencies OK')"
 ```
 
-When the virtual environment is active, use:
+Important: when the virtual environment is active, use:
 
 ```bash
 python
 ```
 
-rather than `python3`, as `python3` may point to another Python installation outside the virtual environment.
+rather than `python3`.
 
-### 3.5. Create local directories
+On some Macs, `python3` may refer to a Homebrew or system Python installation outside the active virtual environment.
+
+### 4.5 Create working directories
 
 ```bash
 mkdir -p tmp _ulf
 ```
 
-### 3.6. Exclude local health data, logs and credentials from Git
+### 4.6 Keep health data and credentials out of Git
 
 ```bash
 cat >> .git/info/exclude <<'EOF'
@@ -303,11 +358,13 @@ test
 EOF
 ```
 
+This keeps local health exports, logs and credential files out of normal Git status output.
+
 ---
 
-## 4. Garmin configuration
+## 5. Garmin setup
 
-Garmin authentication tokens are stored locally under:
+Garmin authentication data are stored locally under:
 
 ```text
 user/<your-garmin-email>/
@@ -319,15 +376,23 @@ Example:
 user/your-garmin-email@example.com/garmin_tokens.json
 ```
 
-Do not commit Garmin token files.
+Do not commit or share Garmin authentication files.
 
-The local configuration file is:
+On a new Mac, the simplest option is to securely copy the Garmin token directory from the existing working Mac:
+
+```text
+user/your-garmin-email@example.com/
+```
+
+Place it in the same location in the new clone.
+
+The local user configuration file is:
 
 ```text
 user/export2garmin.cfg
 ```
 
-A basic Omron configuration can look like this:
+A minimal Omron configuration looks like this:
 
 ```text
 switch_temp_path=tmp/
@@ -340,7 +405,7 @@ omron_export_category=eu
 omron_daily_filter=all
 ```
 
-To keep the local configuration file out of ordinary Git changes:
+Keep the configuration local:
 
 ```bash
 git update-index --skip-worktree user/export2garmin.cfg
@@ -348,9 +413,9 @@ git update-index --skip-worktree user/export2garmin.cfg
 
 ---
 
-## 5. Find the Omron BLE device identifier on macOS
+## 6. Omron Bluetooth setup on macOS
 
-On macOS, the device is identified by a CoreBluetooth UUID rather than a normal Bluetooth MAC address.
+macOS uses a CoreBluetooth device UUID rather than a normal Bluetooth MAC address.
 
 Example:
 
@@ -360,58 +425,38 @@ F174C009-27FC-090A-D7BB-E2D2B7BDD732
 
 The identifier can be different on another Mac.
 
-Useful Bluetooth troubleshooting steps:
+### 6.1 Important Bluetooth rules
 
-* Close the Omron Connect application on the phone;
-* Temporarily disable Bluetooth on the phone;
+Before connecting from the Mac:
+
+* Close the Omron Connect app on the iPhone;
+* Temporarily disable Bluetooth on the iPhone if the phone may reconnect to the monitor;
 * Keep the blood pressure monitor close to the Mac;
-* Do not use the `-p` pairing flag on macOS. CoreBluetooth does not support explicit pairing through Bleak in the same way as Linux.
+* Do not use `-p` on macOS. Explicit pairing is not supported by Bleak/CoreBluetooth in the same way as Linux.
+
+### 6.2 Fix “Peer removed pairing information”
+
+macOS may occasionally show:
+
+```text
+Peer removed pairing information
+```
+
+When that happens:
+
+1. Open **System Settings → Bluetooth**.
+2. Find **X4 Connect AFib**.
+3. Choose **Forget This Device**.
+4. Press the Bluetooth / transfer button on the Omron monitor to put it into communication mode.
+5. Run the Omron export command again.
+
+A first connection attempt may occasionally fail. Once the monitor is in transfer mode, retry the command before changing any code or configuration.
 
 ---
 
-## 6. Daily macOS workflow for User 1
+## 7. First-time Omron import setup
 
-This workflow exports User 1 measurements and uploads them to the configured Garmin Connect account.
-
-### 6.1. Activate the environment
-
-```bash
-cd ~/omron/export2garmin
-source .venv/bin/activate
-```
-
-### 6.2. Read measurements from the Omron monitor
-
-Replace the UUID with the identifier for your Mac.
-
-```bash
-find tmp -name 'omron_user*.csv' -delete
-
-python omron/omblepy.py \
-  --loggerDebug \
-  -d hem-7196t1 \
-  -a hci0 \
-  -m YOUR-OMRON-BLE-UUID \
-  > "_ulf/omron_pull_$(date +%Y%m%d_%H%M%S).log" 2>&1
-```
-
-Check the exported User 1 measurements:
-
-```bash
-tail -10 tmp/omron_user1.csv
-```
-
-User 2 measurements are exported separately:
-
-```bash
-cat tmp/omron_user2.csv
-```
-
-Do not upload User 2 data to the same Garmin account unless that is intentional.
-
-### 6.3. Create the local Omron import-history file
-
-Run this once if `user/omron_backup.csv` does not already exist:
+Create the local import-history file once, if it does not exist:
 
 ```bash
 if [[ ! -f user/omron_backup.csv ]]; then
@@ -421,9 +466,92 @@ EOF
 fi
 ```
 
-### 6.4. Add only new User 1 measurements
+This file is the local source of truth for imported Omron measurements.
 
-Replace the email address with the Garmin account used for User 1:
+---
+
+## 8. Daily macOS workflow for User 1
+
+The commands below export **User 1** from the Omron monitor and upload only previously unseen records to Garmin Connect.
+
+User 2 is exported separately but is not uploaded unless explicitly configured for another Garmin account.
+
+### 8.1 Open the project and activate the environment
+
+```bash
+cd ~/omron/export2garmin
+source .venv/bin/activate
+```
+
+### 8.2 Check the active Garmin upload mode
+
+```bash
+grep -n '^omron_daily_filter=' user/export2garmin.cfg
+```
+
+Default output should be:
+
+```text
+omron_daily_filter=all
+```
+
+### 8.3 Read measurements from the Omron monitor
+
+Before running the command:
+
+* Ensure Omron Connect is closed on the phone;
+* Ensure the monitor is close to the Mac;
+* Press the Bluetooth / transfer button on the monitor when needed.
+
+Run:
+
+```bash
+python omron/omblepy.py \
+  --loggerDebug \
+  -d hem-7196t1 \
+  -a hci0 \
+  -m YOUR-OMRON-BLE-UUID
+```
+
+Example:
+
+```bash
+python omron/omblepy.py \
+  --loggerDebug \
+  -d hem-7196t1 \
+  -a hci0 \
+  -m F174C009-27FC-090A-D7BB-E2D2B7BDD732
+```
+
+A successful run ends with lines similar to:
+
+```text
+communication finished
+writing data to omron_user1.csv
+writing data to omron_user2.csv
+```
+
+Verify that User 1 data exists:
+
+```bash
+ls -lh tmp/omron_user*.csv
+tail -20 tmp/omron_user1.csv
+```
+
+Do not delete the previous `tmp/omron_user*.csv` files before confirming that a new BLE read has succeeded. They provide a useful fallback if a Bluetooth connection attempt fails.
+
+### 8.4 Backup the current import history
+
+```bash
+mkdir -p _ulf
+
+cp user/omron_backup.csv \
+  "_ulf/omron_backup_before_import_$(date +%Y%m%d_%H%M%S).csv"
+```
+
+### 8.5 Add only new User 1 measurements
+
+Replace the Garmin email address with the User 1 Garmin account.
 
 ```bash
 awk -F ';' -v email="your-garmin-email@example.com" '
@@ -436,52 +564,78 @@ FNR==1 { next }
 ' user/omron_backup.csv tmp/omron_user1.csv >> user/omron_backup.csv
 ```
 
-The Unix timestamp is used as the duplicate key. Measurements already present in `omron_backup.csv` are not added again.
+This uses Unix time as the duplicate key.
 
-Show the number of new pending measurements:
+Measurements already present in `user/omron_backup.csv` are not added again.
+
+### 8.6 Review pending Garmin uploads
 
 ```bash
+echo "Pending User 1 readings:"
+awk -F ';' '
+$1 == "to_import" {
+  printf "%s %s  %s/%s  pulse %s\n", $3, $4, $5, $6, $7
+}
+' user/omron_backup.csv
+
+echo
+echo "Number of pending readings:"
 grep -c '^to_import;' user/omron_backup.csv
 ```
 
-### 6.5. Upload pending records to Garmin Connect
+Review this list before importing.
+
+### 8.7 Upload pending measurements to Garmin Connect
 
 ```bash
 python -B omron/omron_export.py
 ```
 
-After successful upload, records change from:
+Every successful row should produce:
 
 ```text
-to_import
+OMRON * Upload status: OK
 ```
 
-to:
+### 8.8 Confirm that the import completed
+
+```bash
+echo "Still pending:"
+grep -c '^to_import;' user/omron_backup.csv
+
+echo
+echo "Latest imported records:"
+tail -20 user/omron_backup.csv
+```
+
+Expected result:
+
+```text
+Still pending:
+0
+```
+
+A later import run will skip all rows already marked:
 
 ```text
 imported
 ```
 
-A second run skips records that were already uploaded.
-
 ---
 
-## 7. Minimal daily command sequence
+## 9. Minimal daily command sequence
 
-After initial setup, the normal HEM-7196T1 workflow is:
+After initial setup, this is the normal workflow:
 
 ```bash
 cd ~/omron/export2garmin
 source .venv/bin/activate
 
-find tmp -name 'omron_user*.csv' -delete
-
 python omron/omblepy.py \
   --loggerDebug \
   -d hem-7196t1 \
   -a hci0 \
-  -m YOUR-OMRON-BLE-UUID \
-  > "_ulf/omron_pull_$(date +%Y%m%d_%H%M%S).log" 2>&1
+  -m YOUR-OMRON-BLE-UUID
 
 awk -F ';' -v email="your-garmin-email@example.com" '
 NR==FNR { seen[$2]=1; next }
@@ -497,50 +651,39 @@ python -B omron/omron_export.py
 
 ---
 
-## 8. Verify Omron import status
+## 10. Verify data by day before Garmin import
 
-Show records waiting for import:
-
-```bash
-grep -c '^to_import;' user/omron_backup.csv
-```
-
-Show successfully imported records:
+This command provides a useful per-day overview of the User 1 Omron data:
 
 ```bash
-grep -c '^imported;' user/omron_backup.csv
+awk -F ';' '
+NR > 1 {
+  split($3, dt, " ")
+  date = dt[1]
+  count[date]++
+  values[date] = values[date] "  " dt[2] " " $4 "/" $5 " p" $6
+}
+END {
+  for (date in count)
+    printf "%s: %d readings%s\n", date, count[date], values[date]
+}
+' tmp/omron_user1.csv | sort -t. -k3,3n -k2,2n -k1,1n
 ```
 
-Show recently processed records:
+Example output:
 
-```bash
-tail -20 user/omron_backup.csv
+```text
+20.06.2026: 6 readings  07:01 123/83 p55  07:03 120/82 p55  07:04 123/79 p54  07:08 128/84 p55  07:09 127/84 p58  07:11 124/86 p55
+21.06.2026: 3 readings  06:15 116/84 p68  06:16 113/79 p61  06:17 118/83 p63
 ```
-
----
-
-## 9. Mobile App
-
-I do not plan to create a mobile app, but I encourage you to use other projects for Mi Body Composition Scale / Mi Scale / S400:
-
-* Android: https://github.com/lswiderski/mi-scale-exporter;
-* iOS | iPadOS: https://github.com/lswiderski/WebBodyComposition.
-
----
-
-## 10. Synchronizing data between different ecosystems
-
-A useful project called SmartScaleConnect synchronizes scale data from Xiaomi Cloud to Garmin Connect for Mi Body Composition Scale 2 / S400:
-
-* Linux | macOS | Windows: https://github.com/AlexxIT/SmartScaleConnect.
 
 ---
 
 ## 11. Privacy and local data
 
-This project handles personal health data and Garmin authentication tokens.
+This project handles sensitive health data and Garmin authentication data.
 
-Do not commit or share:
+Do not commit or publicly share:
 
 ```text
 user/export2garmin.cfg
@@ -550,10 +693,37 @@ tmp/
 _ulf/
 ```
 
+The following files may contain personal blood pressure measurements:
+
+```text
+tmp/omron_user1.csv
+tmp/omron_user2.csv
+user/omron_backup.csv
+```
+
 ---
 
-## 12. License
+## 12. Mobile apps
+
+This project does not provide a mobile app.
+
+Useful related projects for Xiaomi/Mi scales include:
+
+* Android: [mi-scale-exporter](https://github.com/lswiderski/mi-scale-exporter)
+* iOS / iPadOS: [WebBodyComposition](https://github.com/lswiderski/WebBodyComposition)
+
+---
+
+## 13. Synchronizing data between ecosystems
+
+For Xiaomi/Mi body composition scales, SmartScaleConnect can synchronize Xiaomi Cloud scale data with Garmin Connect:
+
+* [SmartScaleConnect](https://github.com/AlexxIT/SmartScaleConnect) for Linux, macOS and Windows.
+
+---
+
+## 14. License
 
 This project remains licensed under the original project license.
 
-See LICENSE for details.
+See [LICENSE](LICENSE) for details.
