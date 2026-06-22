@@ -84,15 +84,7 @@ The HEM-7196T1 uses Omron’s modern Bluetooth Low Energy service:
 FE4A
 ```
 
-The device differs from some older Omron models because both User 1 and User 2 measurements are stored in a shared measurement bank.
-
-The verified record layout for this device includes:
-
-```text
-Record start address: 0x01C4
-Record size:          16 bytes
-User identifier:      embedded in each record
-```
+Unlike some older Omron devices, the HEM-7196T1 stores User 1 and User 2 measurements in a shared record bank. Each measurement contains an embedded user identifier.
 
 The driver reads the shared record bank and separates records into:
 
@@ -101,7 +93,15 @@ tmp/omron_user1.csv
 tmp/omron_user2.csv
 ```
 
-The HEM-7196T1 workflow has been tested with real device data and verified all the way through Garmin Connect:
+The verified HEM-7196T1 record layout uses:
+
+```text
+Record start address: 0x01C4
+Record size:          16 bytes
+User identifier:      embedded in each record
+```
+
+The workflow has been tested end-to-end with real device data:
 
 ```text
 Omron HEM-7196T1 / X4 Connect AFib
@@ -117,11 +117,11 @@ Garmin Connect blood pressure upload
 
 ### 1.4 Garmin duplicate protection
 
-Garmin Connect accepts multiple blood pressure readings on the same day.
+Garmin Connect can store multiple blood pressure readings on the same day.
 
-This fork therefore defaults to uploading all Omron readings unless filtering is explicitly enabled.
+This fork therefore defaults to uploading all Omron measurements unless filtering is explicitly enabled.
 
-Each row in `user/omron_backup.csv` has a status:
+Each row in `user/omron_backup.csv` has one of these statuses:
 
 ```text
 to_import  = waiting to be uploaded to Garmin Connect
@@ -129,7 +129,7 @@ imported   = successfully uploaded to Garmin Connect
 failed     = upload failed and can be retried
 ```
 
-After a successful Garmin upload, the script changes the row status to:
+After a successful Garmin upload, the script marks the row:
 
 ```text
 imported
@@ -140,8 +140,8 @@ This prevents duplicate Garmin uploads when the import command is run again.
 Duplicate protection has two layers:
 
 ```text
-1. New Omron rows are compared against existing Unix timestamps in omron_backup.csv.
-2. Already uploaded rows are marked imported and skipped on later Garmin imports.
+1. New Omron readings are compared against Unix timestamps already present in omron_backup.csv.
+2. Successfully uploaded rows are marked imported and skipped during later Garmin imports.
 ```
 
 ### 1.5 Optional daily Omron upload filtering
@@ -152,9 +152,9 @@ Default behaviour is:
 omron_daily_filter=all
 ```
 
-This preserves all raw Omron measurements in Garmin Connect.
+This preserves every raw Omron measurement in Garmin Connect.
 
-Available values are:
+Available values:
 
 ```text
 all             = upload all readings
@@ -266,7 +266,7 @@ Existing Linux and Windows instructions:
 
 ## 3. macOS support for Omron HEM-7196T1 / X4 Connect AFib
 
-The HEM-7196T1 implementation in this fork is verified on macOS with direct Python commands.
+The HEM-7196T1 implementation in this fork is verified on macOS through direct Python commands.
 
 The existing `import_data.sh` is primarily Linux-oriented and may depend on components such as:
 
@@ -343,14 +343,14 @@ On some Macs, `python3` may refer to a Homebrew or system Python installation ou
 ### 4.5 Create working directories
 
 ```bash
-mkdir -p tmp _ulf
+mkdir -p tmp local
 ```
 
 ### 4.6 Keep health data and credentials out of Git
 
 ```bash
 cat >> .git/info/exclude <<'EOF'
-_ulf/
+local/
 tmp/
 *.log
 *.csv
@@ -450,13 +450,13 @@ When that happens:
 4. Press the Bluetooth / transfer button on the Omron monitor to put it into communication mode.
 5. Run the Omron export command again.
 
-A first connection attempt may occasionally fail. Once the monitor is in transfer mode, retry the command before changing any code or configuration.
+A first connection attempt may occasionally fail. Once the monitor is in transfer mode, retry the command before changing code or configuration.
 
 ---
 
 ## 7. First-time Omron import setup
 
-Create the local import-history file once, if it does not exist:
+Create the local import-history file once, if it does not already exist:
 
 ```bash
 if [[ ! -f user/omron_backup.csv ]]; then
@@ -472,9 +472,9 @@ This file is the local source of truth for imported Omron measurements.
 
 ## 8. Daily macOS workflow for User 1
 
-The commands below export **User 1** from the Omron monitor and upload only previously unseen records to Garmin Connect.
+The commands below export **User 1** from the Omron monitor and upload only previously unseen measurements to Garmin Connect.
 
-User 2 is exported separately but is not uploaded unless explicitly configured for another Garmin account.
+User 2 is exported separately but is not uploaded unless explicitly configured for a separate Garmin account.
 
 ### 8.1 Open the project and activate the environment
 
@@ -543,10 +543,10 @@ Do not delete the previous `tmp/omron_user*.csv` files before confirming that a 
 ### 8.4 Backup the current import history
 
 ```bash
-mkdir -p _ulf
+mkdir -p local
 
 cp user/omron_backup.csv \
-  "_ulf/omron_backup_before_import_$(date +%Y%m%d_%H%M%S).csv"
+  "local/omron_backup_before_import_$(date +%Y%m%d_%H%M%S).csv"
 ```
 
 ### 8.5 Add only new User 1 measurements
@@ -615,7 +615,7 @@ Still pending:
 0
 ```
 
-A later import run will skip all rows already marked:
+A later import run skips all rows already marked:
 
 ```text
 imported
@@ -653,7 +653,7 @@ python -B omron/omron_export.py
 
 ## 10. Verify data by day before Garmin import
 
-This command provides a useful per-day overview of the User 1 Omron data:
+This command provides a per-day overview of the User 1 Omron data:
 
 ```bash
 awk -F ';' '
@@ -690,7 +690,7 @@ user/export2garmin.cfg
 user/omron_backup.csv
 user/<email>/garmin_tokens.json
 tmp/
-_ulf/
+local/
 ```
 
 The following files may contain personal blood pressure measurements:
