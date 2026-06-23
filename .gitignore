@@ -1,9 +1,14 @@
+# Local runtime data, logs and personal health data
 .venv/
 __pycache__/
 *.pyc
-/tmp/
-tmp/
-user/*/
+
 local/
-*.log
-*.csv
+tmp/
+/tmp/
+
+# Omron local import history
+user/omron_backup.csv
+
+# Garmin authentication tokens
+user/*/garmin_tokens.json
